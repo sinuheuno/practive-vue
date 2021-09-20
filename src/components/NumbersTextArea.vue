@@ -30,9 +30,7 @@
         <p>Los siguientes números tienen errores:</p>
         <ul>
           <li v-for="(sim) in wrongSims" :key="sim._id">
-            <span>Num: {{ sim.phone_number }}</span>
-            <br>
-            <span>SN: {{ sim.serial_number }}</span>
+            <span>Num: {{ sim.message }}</span>
             <br>
           </li>
         </ul>
@@ -100,7 +98,6 @@ export default {
         let trimedPhoneNumbers = this.newNumbers.replace(/\s/g, '')
         let splitedPhoneNumbers = trimedPhoneNumbers.split(',')
         let sims = []
-        let wrongSims = []
         let date = new Date()
         let dateInMilli = date.getTime()
         let isNum
@@ -124,96 +121,107 @@ export default {
               sim.serial_number = splitedPhoneNumbers[i + 1]
               sims.push(sim)
             } else {
-              wrongSims.push({
+              this.wrongSims.push({
                 type: 'serial',
-                message: `SIM No: ${ i }. Longitud del número de serie ${ splitedPhoneNumbers[i +1] } debe ser de 19 y contener solo caracteres numéricos`
+                message: `SIM No: ${ i + 1 }. Longitud del número de serie ${ splitedPhoneNumbers[i +1] } debe ser de 19 y contener solo caracteres numéricos`
               })
             }
           } else {
-            wrongSims.push({
+            this.wrongSims.push({
               type: 'number',
-              message: `SIM No: ${ i }. Longitud del número telef ${ splitedPhoneNumbers[i] } debe ser de 10 y contener solo caracteres numéricos`
+              message: `SIM No: ${ i + 1 }. Longitud del número telef ${ splitedPhoneNumbers[i] } debe ser de 10 y contener solo caracteres numéricos`
             })
           }
         }
 
         let config = httpManager.getConfig()
 
-        axios
-          .post(
-            httpManager.pushSIMsUrl + '/' + this.selectedDistributor._id,
-            { sims },
-            config
-          )
-          .then(response => {
-            if (response.data.message.status === 'success') {
-              this.$bvModal.msgBoxOk(
-                'Números guardados correctamente. Se ignoraron espacios vacíos y números erróneos',
-                {
-                  title: 'Éxito',
-                  size: 'lg',
-                  buttonSize: 'lg',
-                  okVariant: 'success'
-                }
+        if (sims.length >= 1) {
+          axios
+              .post(
+                  httpManager.pushSIMsUrl + '/' + this.selectedDistributor._id,
+                  { sims },
+                  config
               )
-              this.wrongSimsMongo = []
-              this.getDistributors()
-              this.$emit('setSelectedDistributor', null)
-              this.newNumbers = ""
-              this.$emit('setShowNumbersSpinner', false)
-              this.$emit('setSims', null)
-
-              if (response.data.not_registered_sims.length > 0) {
-                this.wrongSims = response.data.not_registered_sims
-              }
-            } else {
-              if (response.data.message.code === 1003) {
-                this.wrongSimsMongo = response.data.writeErrors
-                this.newNumbers = ''
-                _this.$emit('setShowNumbersSpinner', false)
-                this.$bvModal.msgBoxOk(
-                'Números guardados correctamente. Se encontraron números que ya están en la base de datos. Se mostrarán al cerrar esta ventana.',
-                {
-                  title: 'Éxito',
-                  size: 'lg',
-                  buttonSize: 'lg',
-                  okVariant: 'success'
-                }
-              )
-              } else {
-                if (response.data.message === 'Access token expired') {
-                  this.showDistributorSpinner = false
-                  this.$bvModal
-                    .msgBoxOk('Sesión expirada. Vuelve a iniciar sesión.', {
-                      title: 'Error',
-                      size: 'lg',
-                      buttonSize: 'lg',
-                      okVariant: 'success'
-                    })
-                    .then(response => {
-                      if (response) {
-                        this.$router.push('/login')
-                        authentication.logOut()
-                        this.$emit('setShowNumbersSpinner', false)
-                        this.$emit('setSims', null)
+              .then(response => {
+                if (response.data.message.status === 'success') {
+                  this.$bvModal.msgBoxOk(
+                      'Números guardados correctamente. Se ignoraron espacios vacíos y números erróneos',
+                      {
+                        title: 'Éxito',
+                        size: 'lg',
+                        buttonSize: 'lg',
+                        okVariant: 'success'
                       }
-                    })
-                } else {
-                  this.$emit('setShowNumbersSpinner', false)
-                  modals.error(
-                    modal,
-                    'Ocurrió un error al guardar. Intenta de nuevo'
                   )
+                  this.wrongSimsMongo = []
+                  this.getDistributors()
+                  this.$emit('setSelectedDistributor', null)
+                  this.newNumbers = ""
+                  this.$emit('setShowNumbersSpinner', false)
                   this.$emit('setSims', null)
+
+                  if (response.data.not_registered_sims.length > 0) {
+                    this.wrongSims = response.data.not_registered_sims
+                  }
+                } else {
+                  if (response.data.message.code === 1003) {
+                    this.wrongSimsMongo = response.data.writeErrors
+                    this.newNumbers = ''
+                    _this.$emit('setShowNumbersSpinner', false)
+                    this.$bvModal.msgBoxOk(
+                        'Números guardados correctamente. Se encontraron números que ya están en la base de datos. Se mostrarán al cerrar esta ventana.',
+                        {
+                          title: 'Éxito',
+                          size: 'lg',
+                          buttonSize: 'lg',
+                          okVariant: 'success'
+                        }
+                    )
+                  } else {
+                    if (response.data.message === 'Access token expired') {
+                      this.showDistributorSpinner = false
+                      this.$bvModal
+                          .msgBoxOk('Sesión expirada. Vuelve a iniciar sesión.', {
+                            title: 'Error',
+                            size: 'lg',
+                            buttonSize: 'lg',
+                            okVariant: 'success'
+                          })
+                          .then(response => {
+                            if (response) {
+                              this.$router.push('/login')
+                              authentication.logOut()
+                              this.$emit('setShowNumbersSpinner', false)
+                              this.$emit('setSims', null)
+                            }
+                          })
+                    } else {
+                      this.$emit('setShowNumbersSpinner', false)
+                      modals.error(
+                          modal,
+                          'Ocurrió un error al guardar. Intenta de nuevo'
+                      )
+                      this.$emit('setSims', null)
+                    }
+                  }
                 }
-              }
-            }
+              })
+              .catch(function(error) {
+                _this.$emit('setShowNumbersSpinner', false)
+                this.$emit('setSims', null)
+                modals.error(modal, 'Error al conectarse al servidor ' + error)
+              })
+        } else {
+          this.$bvModal.msgBoxOk('Recuerda que debes ingresar los números telefónicos con su respectivo número de serie de 19 caracteres (separado por comas)', {
+            title: 'Error',
+            size: 'lg',
+            buttonSize: 'lg',
+            okVariant: 'success'
           })
-          .catch(function(error) {
-            _this.$emit('setShowNumbersSpinner', false)
-            this.$emit('setSims', null)
-            modals.error(modal, 'Error al conectarse al servidor ' + error)
-          })
+
+          this.$emit('setShowNumbersSpinner', false)
+        }
       } else {
         this.$emit('setSims', null)
         this.$bvModal.msgBoxOk('Debes elegir un distribuidor', {
